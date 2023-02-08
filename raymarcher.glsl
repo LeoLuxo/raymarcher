@@ -154,7 +154,7 @@ Surface sdfScene(vec3 p, float time)
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
-		vec3(0.0, 0.5, 1.0),
+		vec3(0.0, 0.3, 1.0),
 		0.5, 8.0
 	);
 	
@@ -167,7 +167,7 @@ Surface sdfScene(vec3 p, float time)
 	// return sphere;
 	Surface d = plane;
 	d = blendSMin(octa, d, 1.0);
-	d = blendDiff(d, sphere);
+	d = blendSMin(d, sphere, 1.0);
 	// d = blendSDiff(d, sphere, 1.0);
 	// d = blendSMin(d, sphere, 1.0);
 	return d;
@@ -272,6 +272,8 @@ vec3 render(in vec2 fragCoord)
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
 	vec3 camera = vec3(0.0, 2.0, 0.0);
 	
+	// SUN_DIR = normalize(vec3(cos(time * 0.1), 0.3, sin(time * 0.1)));
+	
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
 	camera.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
 	mat3 viewMat = cameraLookAt(camera, target);
@@ -315,6 +317,46 @@ vec3 render(in vec2 fragCoord)
 		// fog
 		// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
 		color = mix(color, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
+		
+		
+		
+		
+		
+		
+		
+		
+		rayDir = reflect(rayDir, normal);
+		Surface surf = rayMarch(hitPoint, rayDir, time);
+		t = surf.dist;
+		
+		hitPoint = camera + rayDir * t;
+		normal = calcNormal(hitPoint, time);
+		
+		shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
+		ao = calcAmbientOcclusion(hitPoint, normal, time);
+		
+		sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
+		skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
+		bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+		
+		lighting = vec3(0.0);
+		
+		// Sun diffuse
+		lighting += SUN_COLOR * sunDiffuse * shadow;
+		// Sky ambient diffuse
+		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
+		// Bounce ambient diffuse
+		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+		
+		vec3 color2 = surf.color * lighting;
+		
+		// Sun specular
+		color2 += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
+		
+		
+		color += color2 * 0.2;
+		
+		
 	}
 	else
 	{
