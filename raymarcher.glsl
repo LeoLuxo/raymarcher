@@ -27,7 +27,7 @@
 #define FOG_FADE_DISTANCE 50.0
 #define FOG_POWER 0.5
 
-#define REFLECTION_PASSES 2
+#define REFLECTION_PASSES 5
 #define REFLECTION_NORMAL_OFFSET 0.0001
 
 
@@ -155,26 +155,26 @@ Surface sdfScene(vec3 p, float time)
 		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
 		vec3(1.0, 0.01, 0.0),
 		0.1, 64.0,
-		1.0
+		0.0
 	);
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
 		0.5, 8.0,
-		0.0
+		0.3
 	);
 	
 	Surface plane;
 	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.7, 0.7, 0.7), 0.1, 8.0, 0.5);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.6, 0.6, 0.6), 0.1, 8.0, 0.3);
 	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0, 0.5);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0, 0.3);
 	
 	// return sphere;
 	Surface d = plane;
 	d = blendSMin(octa, d, 1.0);
-	d = blendSMin(d, sphere, 1.0);
+	d = blendSDiff(d, sphere, 1.0);
 	// d = blendSDiff(d, sphere, 1.0);
 	// d = blendSMin(d, sphere, 1.0);
 	return d;
