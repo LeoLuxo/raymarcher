@@ -10,7 +10,7 @@
 #define SHADOW_MAX_MARCH 50.0
 #define SHADOW_MAX_MARCH_STEPS 256
 #define SHADOW_MARCH_BIAS 0.5
-#define SHADOW_NORMAL_OFFSET 0.000
+#define SHADOW_NORMAL_OFFSET 0.0001
 
 #define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
@@ -27,12 +27,16 @@
 #define FOG_FADE_DISTANCE 50.0
 #define FOG_POWER 0.5
 
+#define REFLECTION_PASSES 2
+#define REFLECTION_NORMAL_OFFSET 0.0001
+
 
 struct Surface {
 	float dist;
 	vec3 color;
 	float specularCoeff;
 	float specularPow;
+	float reflectionCoeff;
 };
 
 
@@ -85,6 +89,7 @@ Surface blendSurf(Surface a, Surface b, float blend)
 	a.color = mix(a.color, b.color, blend);
 	a.specularCoeff = mix(a.specularCoeff, b.specularCoeff, blend);
 	a.specularPow = mix(a.specularPow, b.specularPow, blend);
+	a.reflectionCoeff = mix(a.reflectionCoeff, b.reflectionCoeff, blend);
 	return a;
 }
 
@@ -149,20 +154,22 @@ Surface sdfScene(vec3 p, float time)
 	Surface sphere = Surface(
 		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
 		vec3(1.0, 0.01, 0.0),
-		0.1, 64.0
+		0.1, 64.0,
+		1.0
 	);
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
-		0.5, 8.0
+		0.5, 8.0,
+		0.0
 	);
 	
 	Surface plane;
 	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.7, 0.7, 0.7), 0.1, 8.0);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.7, 0.7, 0.7), 0.1, 8.0, 0.5);
 	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0, 0.5);
 	
 	// return sphere;
 	Surface d = plane;
@@ -270,101 +277,82 @@ vec3 render(in vec2 fragCoord)
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
-	vec3 camera = vec3(0.0, 2.0, 0.0);
+	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
 	
 	// SUN_DIR = normalize(vec3(cos(time * 0.1), 0.3, sin(time * 0.1)));
 	
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
-	camera.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
-	mat3 viewMat = cameraLookAt(camera, target);
+	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
+	mat3 viewMat = cameraLookAt(rayOrigin, target);
 	
 	vec2 uv = (fragCoord - iResolution.xy / 2.0)/iResolution.y;
 	float focalLength = 1.0 / 2.0 / 0.5; // tan(45° / 2) = 0.5
 	
 	vec3 rayDir = viewMat * normalize(vec3(uv, focalLength));
 	
-	Surface surf = rayMarch(camera, rayDir, time);
-	float t = surf.dist;
+	vec3 color = vec3(0.0);
+	float reflection = 1.0;
 	
-	vec3 color;
-	if (t >= 0.0)
+	for (int ref=0; ref < REFLECTION_PASSES; ref++)
 	{
-		// object was hit
-		vec3 hitPoint = camera + rayDir * t;
-		vec3 normal = calcNormal(hitPoint, time);
+		vec3 passColor;
 		
-		float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
-		float ao = calcAmbientOcclusion(hitPoint, normal, time);
+		Surface surf = rayMarch(rayOrigin, rayDir, time);
+		float t = surf.dist;
 		
-		float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
-		float skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
-		float bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+		if (t >= 0.0)
+		{
+			// object was hit
+			vec3 hitPoint = rayOrigin + rayDir * t;
+			vec3 normal = calcNormal(hitPoint, time);
+			
+			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
+			float ao = calcAmbientOcclusion(hitPoint, normal, time);
+			
+			float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
+			float skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
+			float bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+			
+			vec3 lighting = vec3(0.0);
+			
+			// Sun diffuse
+			lighting += SUN_COLOR * sunDiffuse * shadow;
+			// Sky ambient diffuse
+			lighting += SKY_FILL_COLOR * skyDiffuse * ao;
+			// Bounce ambient diffuse
+			lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+			
+			passColor = surf.color * lighting;
+			
+			// Sun specular
+			passColor += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
+			
+			// fog
+			// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
+			passColor = mix(passColor, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
+			
+			
+			// Prepare next reflective bounce
+			rayOrigin = hitPoint + normal * REFLECTION_NORMAL_OFFSET;
+			rayDir = reflect(rayDir, normal);
+		}
+		else
+		{
+			// sky color
+			passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
+			
+			// sun
+			passColor = passColor + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+			
+			// No more recursion afterwards (not breaking because we still want to add the pass color)
+			ref = REFLECTION_PASSES;
+		}
 		
-		vec3 lighting = vec3(0.0);
+		// Add pass color to final color
+		color += passColor * reflection;
 		
-		// Sun diffuse
-		lighting += SUN_COLOR * sunDiffuse * shadow;
-		// Sky ambient diffuse
-		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
-		// Bounce ambient diffuse
-		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
-		
-		color = surf.color * lighting;
-		
-		// Sun specular
-		color += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
-		
-		// fog
-		// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
-		color = mix(color, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
-		
-		
-		
-		
-		
-		
-		
-		
-		rayDir = reflect(rayDir, normal);
-		Surface surf = rayMarch(hitPoint, rayDir, time);
-		t = surf.dist;
-		
-		hitPoint = camera + rayDir * t;
-		normal = calcNormal(hitPoint, time);
-		
-		shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
-		ao = calcAmbientOcclusion(hitPoint, normal, time);
-		
-		sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
-		skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
-		bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
-		
-		lighting = vec3(0.0);
-		
-		// Sun diffuse
-		lighting += SUN_COLOR * sunDiffuse * shadow;
-		// Sky ambient diffuse
-		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
-		// Bounce ambient diffuse
-		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
-		
-		vec3 color2 = surf.color * lighting;
-		
-		// Sun specular
-		color2 += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
-		
-		
-		color += color2 * 0.2;
-		
-		
-	}
-	else
-	{
-		// sky color
-		color = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
-		
-		// sun
-		color = color + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+		// Prepare next reflective bounce
+		reflection = reflection * surf.reflectionCoeff;
 	}
 	
 	return color;
