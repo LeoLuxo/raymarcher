@@ -1,31 +1,21 @@
 
-#define EPSILON 0.00001
+#define EPSILON 0.0001
 #define MIN_MARCH 0.2
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
 
-#define SHADOW_DEF 16.0
-#define SHADOW_EPSILON 0.001
+#define SHADOW_DEF 32.0
+#define SHADOW_EPSILON 0.00001
 #define SHADOW_MIN_MARCH 0.01
 #define SHADOW_MAX_MARCH 50.0
-#define SHADOW_MAX_MARCH_STEPS 256
+#define SHADOW_MAX_MARCH_STEPS 1024
 #define SHADOW_MARCH_BIAS 0.5
-#define SHADOW_NORMAL_OFFSET 0.0001
+#define SHADOW_NORMAL_OFFSET 0.001
 
 #define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
-
-#define SUN_DIR normalize(vec3(1.0, 0.5, 0.0)) // Is inverted, so vector looking TOWARDS the sun
-#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.3
-#define SKY_COLOR vec3(0.4, 0.7, 1.0)
-#define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
-#define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)
-
-#define FOG_DISTANCE MAX_MARCH
-#define FOG_FADE_DISTANCE 50.0
-#define FOG_POWER 0.5
 
 #define REFLECTION_PASSES 5
 #define REFLECTION_NORMAL_OFFSET 0.0001
@@ -135,6 +125,12 @@ float sdfSphere(vec3 p, float radius)
 	return length(p) - radius;
 }
 
+float sdfBox(vec3 p, vec3 bounds)
+{
+  vec3 q = abs(p) - bounds/2.0;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
 float sdfOctahedron(vec3 p, float size)
 {
 	p = abs(p);
@@ -151,34 +147,48 @@ float sdfOctahedron(vec3 p, float size)
 
 Surface sdfScene(vec3 p, float time)
 {
-	Surface sphere = Surface(
-		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
-		vec3(1.0, 0.01, 0.0),
-		0.1, 64.0,
-		0.0
-	);
+	float wallReflec = 0.1;
 	
-	Surface octa = Surface(
-		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
-		vec3(0.0, 0.3, 1.0),
-		0.5, 8.0,
-		0.3
-	);
+	Surface ceilingHole = Surface(sdfBox(p - vec3(0.0, 10.0, 0.0), vec3(2.0, 2.0, 2.0)), vec3(1.0), 0.0, 0.0, 0.0);
+	Surface ceilingWall = Surface(sdfBox(p - vec3(0.0, 11.0, 0.0), vec3(12.0, 2.0, 12.0)), vec3(0.9), 0.1, 16.0, wallReflec);
 	
-	Surface plane;
+	Surface floorWall;
 	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.6, 0.6, 0.6), 0.1, 8.0, 0.3);
+		floorWall = Surface(sdfBox(p - vec3(0.0, -1.0, 0.0), vec3(12.0, 2.0, 12.0)), vec3(0.7), 0.1, 16.0, wallReflec);
 	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0, 0.3);
+		floorWall = Surface(sdfBox(p - vec3(0.0, -1.0, 0.0), vec3(12.0, 2.0, 12.0)), vec3(0.9), 0.1, 16.0, wallReflec);
 	
-	// return sphere;
-	Surface d = plane;
-	d = blendSMin(octa, d, 1.0);
-	d = blendSDiff(d, sphere, 1.0);
-	// d = blendSDiff(d, sphere, 1.0);
-	// d = blendSMin(d, sphere, 1.0);
+	Surface backWall = Surface(sdfBox(p - vec3(0.0, 5.0, 5.5), vec3(12.0, 11.0, 1.0)), vec3(0.9), 0.1, 16.0, wallReflec);
+	Surface rightWall = Surface(sdfBox(p - vec3(-5.5, 5.0, 0), vec3(1.0, 11.0, 12.0)), vec3(0.0, 0.3, 0.9), 0.1, 16.0, wallReflec);
+	Surface leftWall = Surface(sdfBox(p - vec3(5.5, 5.0, 0), vec3(1.0, 11.0, 12.0)), vec3(0.9, 0.3, 0.0), 0.1, 16.0, wallReflec);
+	
+	
+	
+	Surface sphere1 = Surface(
+		sdfSphere(p - vec3(3.0, 2.0, 1.0), 2.0),
+		vec3(0.0),
+		0.1, 16.0,
+		1.0
+	);
+	
+	Surface sphere2 = Surface(
+		sdfSphere(p - vec3(-3.0, 5.0, -1.0), 1.0),
+		vec3(0.0),
+		0.1, 16.0,
+		1.0
+	);
+	
+	Surface d = floorWall;
+	d = blendMin(d, ceilingWall);
+	d = blendDiff(d, ceilingHole);
+	d = blendMin(d, backWall);
+	d = blendMin(d, rightWall);
+	d = blendMin(d, leftWall);
+	
+	d = blendMin(d, sphere1);
+	d = blendMin(d, sphere2);
+	
 	return d;
-	// return blendSDiff(sphere, plane, 1.0);
 }
 
 
@@ -224,12 +234,12 @@ vec3 calcNormal(vec3 p, float time) // for function f(p)
 							k.xxx*sdfScene(p + k.xxx*h, time).dist);
 }
 
-float calcShadow(vec3 rayOrigin, vec3 rayDir, float time)
+float calcShadow(vec3 rayOrigin, vec3 rayDir, float maxDist, float time)
 {
 	float t = SHADOW_MIN_MARCH;
    float shadow = 1.0;
 	
-	for (int i = 0; i < SHADOW_MAX_MARCH_STEPS && t < SHADOW_MAX_MARCH; i++)
+	for (int i = 0; i < SHADOW_MAX_MARCH_STEPS && t < min(SHADOW_MAX_MARCH, maxDist); i++)
 	{
 		vec3 p = rayOrigin + rayDir * t;
 		float h = sdfScene(p, time).dist;
@@ -276,17 +286,13 @@ vec3 render(in vec2 fragCoord)
 	float time = 5.0 + iTime * 1.0;
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
-	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
-	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
+	vec3 target = vec3(0.0, 5.0, 0.0);
+	vec3 rayOrigin = vec3(0.0, 5.0, -10.0);
 	
-	// SUN_DIR = normalize(vec3(cos(time * 0.1), 0.3, sin(time * 0.1)));
-	
-	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
-	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
 	mat3 viewMat = cameraLookAt(rayOrigin, target);
 	
 	vec2 uv = (fragCoord - iResolution.xy / 2.0)/iResolution.y;
-	float focalLength = 1.0 / 2.0 / 0.5; // tan(45° / 2) = 0.5
+	float focalLength = 1.0 / 2.0 / tan(radians(45.0)); // tan(45° / 2) = 0.5
 	
 	vec3 rayDir = viewMat * normalize(vec3(uv, focalLength));
 	
@@ -306,30 +312,28 @@ vec3 render(in vec2 fragCoord)
 			vec3 hitPoint = rayOrigin + rayDir * t;
 			vec3 normal = calcNormal(hitPoint, time);
 			
-			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
+			vec3 light = vec3(0.0, 10.0, 0.0);
+			vec3 lightDir = normalize(light - hitPoint);
+			
+			vec3 lightColor = vec3(0.8);
+			vec3 ambientColor = vec3(1.0) - lightColor;
+			
+			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, lightDir, distance(light, hitPoint), time);
 			float ao = calcAmbientOcclusion(hitPoint, normal, time);
 			
-			float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
-			float skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
-			float bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+			float lightDiffuse = clamp(dot(normal, lightDir), 0.0, 1.0);
 			
 			vec3 lighting = vec3(0.0);
 			
-			// Sun diffuse
-			lighting += SUN_COLOR * sunDiffuse * shadow;
-			// Sky ambient diffuse
-			lighting += SKY_FILL_COLOR * skyDiffuse * ao;
-			// Bounce ambient diffuse
-			lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+			// light diffuse
+			lighting += lightColor * lightDiffuse * shadow;
+			// ambient
+			lighting += ambientColor * ao;
 			
 			passColor = surf.color * lighting;
 			
-			// Sun specular
-			passColor += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
-			
-			// fog
-			// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
-			passColor = mix(passColor, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
+			// light specular
+			passColor += lightColor * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+lightDir)), 0.0, 1.0);
 			
 			
 			// Prepare next reflective bounce
@@ -338,11 +342,8 @@ vec3 render(in vec2 fragCoord)
 		}
 		else
 		{
-			// sky color
-			passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
-			
-			// sun
-			passColor = passColor + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+			// black background color
+			passColor = vec3(0.0);
 			
 			// No more recursion afterwards (not breaking because we still want to add the pass color)
 			ref = REFLECTION_PASSES;
