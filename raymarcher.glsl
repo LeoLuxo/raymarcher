@@ -1,16 +1,16 @@
 
 #define EPSILON 0.0001
-#define MIN_MARCH 0.2
+#define MIN_MARCH 0.1
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
 
-#define SHADOW_DEF 32.0
-#define SHADOW_EPSILON 0.00001
-#define SHADOW_MIN_MARCH 0.01
+#define SHADOW_DEF 8.0
+#define SHADOW_EPSILON 0.0001
+#define SHADOW_MIN_MARCH 0.1
 #define SHADOW_MAX_MARCH 50.0
-#define SHADOW_MAX_MARCH_STEPS 1024
+#define SHADOW_MAX_MARCH_STEPS 2000
 #define SHADOW_MARCH_BIAS 0.5
-#define SHADOW_NORMAL_OFFSET 0.001
+#define SHADOW_NORMAL_OFFSET 0.01
 
 #define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
@@ -147,9 +147,9 @@ float sdfOctahedron(vec3 p, float size)
 
 Surface sdfScene(vec3 p, float time)
 {
-	float wallReflec = 0.1;
+	float wallReflec = 0.2;
 	
-	Surface ceilingHole = Surface(sdfBox(p - vec3(0.0, 10.0, 0.0), vec3(2.0, 2.0, 2.0)), vec3(1.0), 0.0, 0.0, 0.0);
+	Surface ceilingHole = Surface(sdfBox(p - vec3(0.0, 10.0, 0.0), vec3(2.0, 2.0, 2.0)), vec3(1.0), 0.0, 0.0, 1.0);
 	Surface ceilingWall = Surface(sdfBox(p - vec3(0.0, 11.0, 0.0), vec3(12.0, 2.0, 12.0)), vec3(0.9), 0.1, 16.0, wallReflec);
 	
 	Surface floorWall;
@@ -283,7 +283,7 @@ mat3 cameraLookAt(vec3 position, vec3 target)
 
 vec3 render(in vec2 fragCoord)
 {
-	float time = 5.0 + iTime * 1.0;
+	float time = 0.0 + iTime * 1.0;
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
 	vec3 target = vec3(0.0, 5.0, 0.0);
@@ -312,7 +312,7 @@ vec3 render(in vec2 fragCoord)
 			vec3 hitPoint = rayOrigin + rayDir * t;
 			vec3 normal = calcNormal(hitPoint, time);
 			
-			vec3 light = vec3(0.0, 10.0, 0.0);
+			vec3 light = vec3(10.0 - 20.0 * mouse.x, -5.0 + 20.0 * mouse.y, 0.0);
 			vec3 lightDir = normalize(light - hitPoint);
 			
 			vec3 lightColor = vec3(0.8);
@@ -333,7 +333,7 @@ vec3 render(in vec2 fragCoord)
 			passColor = surf.color * lighting;
 			
 			// light specular
-			passColor += lightColor * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+lightDir)), 0.0, 1.0);
+			passColor += lightColor * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+lightDir)) * shadow, 0.0, 1.0);
 			
 			
 			// Prepare next reflective bounce
