@@ -228,22 +228,24 @@ vec3 calcNormal(vec3 p, float time) // for function f(p)
 							k.xxx*sdfScene(p + k.xxx*h, time).dist);
 }
 
-float calcShadow(vec3 rayOrigin, vec3 rayDir, float time)
+float calcShadow(vec3 rayOrigin, vec3 rayDir, float maxDist, float time)
 {
 	float t = SHADOW_MIN_MARCH;
+	float h = 0.0;
    float shadow = 1.0;
 	
 	for (int i = 0; i < SHADOW_MAX_MARCH_STEPS && t < SHADOW_MAX_MARCH; i++)
 	{
+		t += h * SHADOW_MARCH_BIAS;
+		t = min(t, maxDist);
+		
 		vec3 p = rayOrigin + rayDir * t;
-		float h = sdfScene(p, time).dist;
+		h = sdfScene(p, time).dist;
 		
 		if (h < SHADOW_EPSILON)
 			return 0.0;
 		
 		shadow = min(shadow, SHADOW_DEF * h / t);
-		
-		t += h * SHADOW_MARCH_BIAS;
 	}
 	
 	return clamp(shadow, 0.0, 1.0);
@@ -310,7 +312,7 @@ vec3 render(in vec2 fragCoord)
 			vec3 hitPoint = rayOrigin + rayDir * t;
 			vec3 normal = calcNormal(hitPoint, time);
 			
-			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, time);
+			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, 1000.0, time);
 			float ao = calcAmbientOcclusion(hitPoint, normal, time);
 			
 			float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
