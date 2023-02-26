@@ -4,12 +4,12 @@
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
 
-#define SHADOW_DEF 8.0
+#define SHADOW_DEF 16.0
 #define SHADOW_EPSILON 0.0001
 #define SHADOW_MIN_MARCH 0.1
 #define SHADOW_MAX_MARCH 50.0
 #define SHADOW_MAX_MARCH_STEPS 2000
-#define SHADOW_MARCH_BIAS 0.5
+#define SHADOW_MARCH_BIAS 0.9
 #define SHADOW_NORMAL_OFFSET 0.01
 
 #define AO_STEPS 5
@@ -237,19 +237,21 @@ vec3 calcNormal(vec3 p, float time) // for function f(p)
 float calcShadow(vec3 rayOrigin, vec3 rayDir, float maxDist, float time)
 {
 	float t = SHADOW_MIN_MARCH;
+	float h = 0.0;
    float shadow = 1.0;
 	
 	for (int i = 0; i < SHADOW_MAX_MARCH_STEPS && t < min(SHADOW_MAX_MARCH, maxDist); i++)
 	{
+		t += h * SHADOW_MARCH_BIAS;
+		t = min(t, maxDist);
+		
 		vec3 p = rayOrigin + rayDir * t;
-		float h = sdfScene(p, time).dist;
+		h = sdfScene(p, time).dist;
 		
 		if (h < SHADOW_EPSILON)
 			return 0.0;
 		
 		shadow = min(shadow, SHADOW_DEF * h / t);
-		
-		t += h * SHADOW_MARCH_BIAS;
 	}
 	
 	return clamp(shadow, 0.0, 1.0);
