@@ -17,8 +17,10 @@
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
 
-#define REFLECTION_PASSES 5
+#define REFLECTION_PASSES 4
 #define REFLECTION_NORMAL_OFFSET 0.0001
+
+#define ANIMATED_LIGHT
 
 
 struct Surface {
@@ -314,7 +316,12 @@ vec3 render(in vec2 fragCoord)
 			vec3 hitPoint = rayOrigin + rayDir * t;
 			vec3 normal = calcNormal(hitPoint, time);
 			
+			#ifdef ANIMATED_LIGHT
+			vec3 light = vec3(4.0*sin(time), 5.0 + 4.0*cos(time), 3.0*sin(time-1.0));
+			#else
 			vec3 light = vec3(10.0 - 20.0 * mouse.x, -5.0 + 20.0 * mouse.y, 0.0);
+			#endif
+			
 			vec3 lightDir = normalize(light - hitPoint);
 			
 			vec3 lightColor = vec3(0.8);
