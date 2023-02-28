@@ -4,12 +4,12 @@
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
 
-#define SHADOW_DEF 16.0
-#define SHADOW_EPSILON 0.0001
-#define SHADOW_MIN_MARCH 0.1
+#define SHADOW_DEF 8.0
+#define SHADOW_EPSILON 0.001
+#define SHADOW_MIN_MARCH 0.01
 #define SHADOW_MAX_MARCH 50.0
 #define SHADOW_MAX_MARCH_STEPS 2000
-#define SHADOW_MARCH_BIAS 0.9
+#define SHADOW_MARCH_BIAS 1.0
 #define SHADOW_NORMAL_OFFSET 0.01
 
 #define AO_STEPS 5
@@ -20,7 +20,7 @@
 #define REFLECTION_PASSES 4
 #define REFLECTION_NORMAL_OFFSET 0.0001
 
-#define ANIMATED_LIGHT
+// #define ANIMATED_LIGHT
 
 
 struct Surface {
@@ -240,6 +240,7 @@ float calcShadow(vec3 rayOrigin, vec3 rayDir, float maxDist, float time)
 {
 	float t = SHADOW_MIN_MARCH;
 	float h = 0.0;
+	float ph = 1e20;
    float shadow = 1.0;
 	
 	for (int i = 0; i < SHADOW_MAX_MARCH_STEPS && t < min(SHADOW_MAX_MARCH, maxDist); i++)
@@ -254,6 +255,10 @@ float calcShadow(vec3 rayOrigin, vec3 rayDir, float maxDist, float time)
 			return 0.0;
 		
 		shadow = min(shadow, SHADOW_DEF * h / t);
+		// float y = h*h/(2.0*ph);
+		// float d = sqrt(h*h-y*y);
+		// shadow = min(shadow, SHADOW_DEF * d/max(0.0, t-y));
+		// ph = h;
 	}
 	
 	return clamp(shadow, 0.0, 1.0);
