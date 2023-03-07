@@ -1,6 +1,6 @@
 
 #define EPSILON 0.00001
-#define MIN_MARCH 0.2
+#define MIN_MARCH 0.05
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
 
@@ -17,7 +17,7 @@
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
 
-#define SUN_DIR normalize(vec3(1.0, 0.5, 0.0)) // Is inverted, so vector looking TOWARDS the sun
+#define SUN_DIR normalize(vec3(-0.8, 0.5, -1.0)) // Is inverted, so vector looking TOWARDS the sun
 #define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.3
 #define SKY_COLOR vec3(0.4, 0.7, 1.0)
 #define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
@@ -29,6 +29,10 @@
 
 #define REFLECTION_PASSES 5
 #define REFLECTION_NORMAL_OFFSET 0.0001
+
+
+#iChannel0 "file://skybox/{}.jpg"
+#iChannel0::Type "CubeMap"
 
 
 struct Surface {
@@ -153,28 +157,28 @@ Surface sdfScene(vec3 p, float time)
 {
 	Surface sphere = Surface(
 		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
-		vec3(1.0, 0.01, 0.0),
+		vec3(0.0),
 		0.1, 64.0,
-		0.0
+		1.0
 	);
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
 		0.5, 8.0,
-		0.3
+		0.0
 	);
 	
 	Surface plane;
 	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.6, 0.6, 0.6), 0.1, 8.0, 0.3);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.3), 0.1, 8.0, 0.5);
 	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.2, 0.2, 0.2), 0.1, 8.0, 0.3);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.1), 0.1, 8.0, 0.5);
 	
 	// return sphere;
 	Surface d = plane;
-	d = blendSMin(octa, d, 1.0);
-	d = blendSDiff(d, sphere, 1.0);
+	d = blendMin(octa, d);
+	d = blendSMin(d, sphere, 1.0);
 	// d = blendSDiff(d, sphere, 1.0);
 	// d = blendSMin(d, sphere, 1.0);
 	return d;
@@ -339,7 +343,8 @@ vec3 render(in vec2 fragCoord)
 		else
 		{
 			// sky color
-			passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
+			// passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
+			passColor = texture(iChannel0, rayDir).rgb;
 			
 			// sun
 			passColor = passColor + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
