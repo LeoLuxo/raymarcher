@@ -1,5 +1,5 @@
 
-#define EPSILON 0.00001
+#define EPSILON 0.0001
 #define MIN_MARCH 0.05
 #define MAX_MARCH 150.0
 #define MAX_MARCH_STEPS 1024
@@ -27,8 +27,8 @@
 #define FOG_FADE_DISTANCE 50.0
 #define FOG_POWER 0.5
 
-#define REFLECTION_PASSES 5
-#define REFLECTION_NORMAL_OFFSET 0.0001
+#define RECURSION_PASSES 6
+#define RECURSION_NORMAL_OFFSET 0.001
 
 
 #iChannel0 "file://skybox/{}.jpg"
@@ -41,6 +41,8 @@ struct Surface {
 	float specularCoeff;
 	float specularPow;
 	float reflectionCoeff;
+	float refractionCoeff;
+	float refractionIndex;
 };
 
 
@@ -94,6 +96,7 @@ Surface blendSurf(Surface a, Surface b, float blend)
 	a.specularCoeff = mix(a.specularCoeff, b.specularCoeff, blend);
 	a.specularPow = mix(a.specularPow, b.specularPow, blend);
 	a.reflectionCoeff = mix(a.reflectionCoeff, b.reflectionCoeff, blend);
+	a.refractionCoeff = mix(a.refractionCoeff, b.refractionCoeff, blend);
 	return a;
 }
 
@@ -158,22 +161,24 @@ Surface sdfScene(vec3 p, float time)
 	Surface sphere = Surface(
 		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
 		vec3(0.0),
-		0.1, 64.0,
-		1.0
+		0.1, 8.0,
+		0.2,
+		1.0, 1.6
 	);
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
-		0.5, 8.0,
-		0.0
+		0.1, 8.0,
+		0.2,
+		0.9, 1.6
 	);
 	
 	Surface plane;
 	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.3), 0.1, 8.0, 0.5);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.3), 0.1, 8.0, 0.5, 0.0, 0.0);
 	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.1), 0.1, 8.0, 0.5);
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.1), 0.1, 8.0, 0.5, 0.0, 0.0);
 	
 	// return sphere;
 	Surface d = plane;
@@ -190,7 +195,7 @@ Surface sdfScene(vec3 p, float time)
 
 
 
-Surface rayMarch(vec3 rayOrigin, vec3 rayDir, float time)
+Surface rayMarch(vec3 rayOrigin, vec3 rayDir, float invert, float time)
 {
 	int i;
 	float t = MIN_MARCH;
@@ -200,6 +205,7 @@ Surface rayMarch(vec3 rayOrigin, vec3 rayDir, float time)
 	{
 		vec3 p = rayOrigin + rayDir * t;
 		outSurf = sdfScene(p, time);
+		outSurf.dist = invert * outSurf.dist;
 		
 		if (outSurf.dist < EPSILON) break;
 		
@@ -209,7 +215,7 @@ Surface rayMarch(vec3 rayOrigin, vec3 rayDir, float time)
 	if (t >= MAX_MARCH)
 		t = -1.0;
 	
-	// outSurf.color = float(i) / float(MAX_MARCH_STEPS) * outSurf.color;
+	// outSurf.color = vec3(float(i) / float(MAX_MARCH_STEPS));
 	
 	outSurf.dist = t;
 	
@@ -277,9 +283,59 @@ mat3 cameraLookAt(vec3 position, vec3 target)
 }
 
 
+vec3 calcPassColor(Surface surf, vec3 hitPoint, vec3 rayDir, vec3 normal, float t, float invert, float time) {
+	
+	vec3 passColor = vec3(0.0);
+	
+	if (t >= 0.0)
+	{
+		
+		if (true) {
+			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, 1000.0, time);
+			float ao = calcAmbientOcclusion(hitPoint, normal, time);
+			
+			float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
+			float skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
+			float bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+			
+			vec3 lighting = vec3(0.0);
+				
+			// Sun diffuse
+			lighting += SUN_COLOR * sunDiffuse * shadow;
+			// Sky ambient diffuse
+			lighting += SKY_FILL_COLOR * skyDiffuse * ao;
+			// Bounce ambient diffuse
+			lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+			
+			passColor = surf.color * lighting;
+			
+			// Sun specular
+			passColor += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
+		
+			// fog
+			// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
+			passColor = mix(passColor, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
+		} else {
+			passColor = surf.color;
+		}
+	}
+	else
+	{
+		// sky color
+		// passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
+		passColor = texture(iChannel0, rayDir).rgb;
+		
+		// sun
+		passColor = passColor + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+	}
+	
+	return passColor;
+}
+
+
 vec3 render(in vec2 fragCoord)
 {
-	float time = 5.0 + iTime * 1.0;
+	float time = 1.0 + iTime * 1.0 * 0.0;
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
@@ -297,69 +353,48 @@ vec3 render(in vec2 fragCoord)
 	vec3 rayDir = viewMat * normalize(vec3(uv, focalLength));
 	
 	vec3 color = vec3(0.0);
-	float reflection = 1.0;
 	
-	for (int ref=0; ref < REFLECTION_PASSES; ref++)
+	float bounceCoeff = 1.0;
+	int bounceType = 0; // 0 = reflection, 1 = refraction
+	float invert = 1.0;
+	
+	for (int bounce=0; bounce < RECURSION_PASSES; bounce++)
 	{
-		vec3 passColor;
-		
-		Surface surf = rayMarch(rayOrigin, rayDir, time);
+		Surface surf = rayMarch(rayOrigin, rayDir, invert, time);
 		float t = surf.dist;
 		
-		if (t >= 0.0)
-		{
-			// object was hit
-			vec3 hitPoint = rayOrigin + rayDir * t;
-			vec3 normal = calcNormal(hitPoint, time);
-			
-			float shadow = calcShadow(hitPoint + normal*SHADOW_NORMAL_OFFSET, SUN_DIR, 1000.0, time);
-			float ao = calcAmbientOcclusion(hitPoint, normal, time);
-			
-			float sunDiffuse = clamp(dot(normal, SUN_DIR), 0.0, 1.0);
-			float skyDiffuse = clamp(0.5 + 0.5*dot(normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
-			float bounceDiffuse = clamp(-0.05 + 0.3*dot(normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
-			
-			vec3 lighting = vec3(0.0);
-			
-			// Sun diffuse
-			lighting += SUN_COLOR * sunDiffuse * shadow;
-			// Sky ambient diffuse
-			lighting += SKY_FILL_COLOR * skyDiffuse * ao;
-			// Bounce ambient diffuse
-			lighting += BOUNCE_COLOR * bounceDiffuse * ao;
-			
-			passColor = surf.color * lighting;
-			
-			// Sun specular
-			passColor += SUN_COLOR * surf.specularCoeff * clamp(dot(normal, normalize(rayDir+SUN_DIR)), 0.0, 1.0);
-			
-			// fog
-			// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
-			passColor = mix(passColor, SKY_COLOR, pow(clamp((t - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
-			
-			
-			// Prepare next reflective bounce
-			rayOrigin = hitPoint + normal * REFLECTION_NORMAL_OFFSET;
-			rayDir = reflect(rayDir, normal);
-		}
-		else
-		{
-			// sky color
-			// passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
-			passColor = texture(iChannel0, rayDir).rgb;
-			
-			// sun
-			passColor = passColor + pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
-			
-			// No more recursion afterwards (not breaking because we still want to add the pass color)
-			ref = REFLECTION_PASSES;
-		}
+		if (bounce == 0 && surf.refractionCoeff > surf.reflectionCoeff)
+			bounceType = 1;
+		
+		// assuming object was hit (otherwise we don't care about the values)
+		vec3 hitPoint = rayOrigin + rayDir * t;
+		vec3 normal = calcNormal(hitPoint, time);
+		
+		vec3 passColor = calcPassColor(surf, hitPoint, rayDir, normal, t, invert, time);
 		
 		// Add pass color to final color
-		color += passColor * reflection;
+		color += passColor * bounceCoeff;
 		
-		// Prepare next reflective bounce
-		reflection = reflection * surf.reflectionCoeff;
+		if (t >= 0.0) {
+			// Prepare next reflective bounce
+			rayOrigin = hitPoint + normal * RECURSION_NORMAL_OFFSET * invert;
+			
+			if (bounceType == 0) {
+				rayDir = reflect(rayDir, normal);
+				bounceCoeff = bounceCoeff * surf.reflectionCoeff;
+			} else {
+				if (invert > 0.0)
+					rayDir = refract(rayDir, normal, 1.0 / surf.refractionIndex);
+				else
+					rayDir = refract(rayDir, -normal, surf.refractionIndex);
+				bounceCoeff = bounceCoeff * surf.refractionCoeff;
+				invert = -invert;
+			}
+			
+		} else {
+			// No more recursion afterwards
+			break;
+		}
 	}
 	
 	return color;
