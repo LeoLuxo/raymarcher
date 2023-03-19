@@ -162,16 +162,16 @@ Surface sdfScene(vec3 p, float time)
 		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
 		vec3(0.0),
 		0.1, 8.0,
-		0.2,
-		1.0, 1.6
+		0.1,
+		0.9, 1.6
 	);
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
 		0.1, 8.0,
-		0.2,
-		0.9, 1.6
+		0.4,
+		0.6, 1.6
 	);
 	
 	Surface plane;
@@ -335,7 +335,7 @@ vec3 calcPassColor(Surface surf, vec3 hitPoint, vec3 rayDir, vec3 normal, float 
 
 vec3 render(in vec2 fragCoord)
 {
-	float time = 1.0 + iTime * 1.0 * 0.0;
+	float time = 1.0 + iTime * 0.1;
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
@@ -355,7 +355,7 @@ vec3 render(in vec2 fragCoord)
 	vec3 color = vec3(0.0);
 	
 	float bounceCoeff = 1.0;
-	int bounceType = 0; // 0 = reflection, 1 = refraction
+	bool bounceType = false; // false = reflection, true = refraction
 	float invert = 1.0;
 	
 	for (int bounce=0; bounce < RECURSION_PASSES; bounce++)
@@ -363,8 +363,8 @@ vec3 render(in vec2 fragCoord)
 		Surface surf = rayMarch(rayOrigin, rayDir, invert, time);
 		float t = surf.dist;
 		
-		if (bounce == 0 && surf.refractionCoeff > surf.reflectionCoeff)
-			bounceType = 1;
+		bounceType = surf.refractionCoeff > surf.reflectionCoeff;
+		
 		
 		// assuming object was hit (otherwise we don't care about the values)
 		vec3 hitPoint = rayOrigin + rayDir * t;
@@ -379,16 +379,16 @@ vec3 render(in vec2 fragCoord)
 			// Prepare next reflective bounce
 			rayOrigin = hitPoint + normal * RECURSION_NORMAL_OFFSET * invert;
 			
-			if (bounceType == 0) {
-				rayDir = reflect(rayDir, normal);
-				bounceCoeff = bounceCoeff * surf.reflectionCoeff;
-			} else {
+			if (bounceType) {
 				if (invert > 0.0)
 					rayDir = refract(rayDir, normal, 1.0 / surf.refractionIndex);
 				else
 					rayDir = refract(rayDir, -normal, surf.refractionIndex);
 				bounceCoeff = bounceCoeff * surf.refractionCoeff;
 				invert = -invert;
+			} else {
+				rayDir = reflect(rayDir, normal);
+				bounceCoeff = bounceCoeff * surf.reflectionCoeff;
 			}
 			
 		} else {
