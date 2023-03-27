@@ -23,8 +23,8 @@
 #define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
 #define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)
 
-#define FOG_DISTANCE MAX_MARCH
-#define FOG_FADE_DISTANCE 50.0
+#define FOG_DISTANCE SHADOW_MAX_MARCH
+#define FOG_FADE_DISTANCE 5.0
 #define FOG_POWER 0.5
 
 #define RECURSION_MAX_PASSES 8
@@ -154,12 +154,22 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 	result.normal = calcNormal(result.hitPoint, time);
 	
 	result.rayDir = pass.rayDir;
+	
 	return result;
+}
+
+vec3 skyColor(vec3 rayDir) {
+	// skybox
+	vec3 skyColor = texture(iChannel0, rayDir).rgb;
+	// sun
+	skyColor += pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+	
+	return skyColor;
 }
 
 vec3 calcPassColor(RenderPassResult pass, float time) {
 	
-	vec3 passColor = vec3(0.0);
+	vec3 passColor = skyColor(pass.rayDir);
 	
 	if (pass.hit)
 	{
@@ -183,19 +193,6 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		
 		// Sun specular
 		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * clamp(dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0);
-	
-		// fog
-		// color = mix(color, SKY_COLOR, 1.0-exp(-1e-6*t*t*t));
-		passColor = mix(passColor, SKY_COLOR, pow(clamp((pass.hitSurface.dist - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER));
-	}
-	else
-	{
-		// sky color
-		// passColor = SKY_COLOR - 0.6*max(rayDir.y, 0.0);
-		passColor = texture(iChannel0, pass.rayDir).rgb;
-		
-		// sun
-		passColor = passColor + pow(max(dot(SUN_DIR, pass.rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
 	}
 	
 	return passColor;
@@ -209,8 +206,6 @@ vec3 render(in vec2 fragCoord)
 	
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
-	
-	// SUN_DIR = normalize(vec3(cos(time * 0.1), 0.3, sin(time * 0.1)));
 	
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
 	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
@@ -234,8 +229,13 @@ vec3 render(in vec2 fragCoord)
 		
 		vec3 passColor = calcPassColor(result, time);
 		
+		// Apply fog (which depends on camera distance) to blending coefficient accumulator
+		float fogBlend = 1.0 - pow(clamp((distance(rayOrigin, result.hitPoint) - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER);
+		
 		// Add pass color to final color
-		color += passColor * currentPass.blendCoeff;
+		color += mix(skyColor(currentPass.rayDir), passColor, fogBlend) * currentPass.blendCoeff;
+		
+		currentPass.blendCoeff *= fogBlend;
 		
 		if (result.hit) {
 			// Prepare next reflective & refractive bounces
