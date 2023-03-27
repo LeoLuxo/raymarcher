@@ -7,19 +7,22 @@
 Surface sdfScene(vec3 p, float time)
 {
 	Surface sphere = Surface(
-		sdfSphere(p - vec3(0.0, 2.0 + 2.0*sin(time/1.0), 0.0), 1.0),
+		sdfSphere(p - vec3(0.0, 3.0 + 1.0*sin(1.0+time*0.0), 0.0), 1.0),
 		vec3(0.0),
 		0.1, 8.0,
-		0.1,
-		0.9, 1.6
+		0.2,
+		0.8, 1.6
 	);
+	
+	// float ref = sin(time) / 2.0 + 0.5;
+	float ref = 0.5;
 	
 	Surface octa = Surface(
 		sdfOctahedron(repeatXZ(p, 6.0, 6.0) - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(0.0, 0.3, 1.0),
 		0.1, 8.0,
-		0.4,
-		0.6, 1.6
+		ref,
+		1.0-ref, 1.6
 	);
 	
 	Surface plane;
