@@ -1,18 +1,18 @@
 
 #define EPSILON 0.0001
-#define MIN_MARCH 0.05
-#define MAX_MARCH 150.0
-#define MAX_MARCH_STEPS 1024
+#define MIN_MARCH 0.005
+#define MAX_MARCH 50.0
+#define MAX_MARCH_STEPS 2048
 
 #define SHADOW_DEF 16.0
 #define SHADOW_EPSILON 0.001
 #define SHADOW_MIN_MARCH 0.01
-#define SHADOW_MAX_MARCH 50.0
-#define SHADOW_MAX_MARCH_STEPS 256
+#define SHADOW_MAX_MARCH MAX_MARCH
+#define SHADOW_MAX_MARCH_STEPS MAX_MARCH_STEPS
 #define SHADOW_MARCH_BIAS 0.5
 #define SHADOW_NORMAL_OFFSET 0.0001
 
-#define AO_STEPS 5
+#define AO_STEPS 0
 #define AO_STEP_SIZE 0.20
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
@@ -23,11 +23,11 @@
 #define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
 #define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)
 
-#define FOG_DISTANCE SHADOW_MAX_MARCH
+#define FOG_DISTANCE MAX_MARCH
 #define FOG_FADE_DISTANCE 5.0
 #define FOG_POWER 0.5
 
-#define RECURSION_MAX_PASSES 8
+#define RECURSION_MAX_PASSES 16
 #define RECURSION_NORMAL_OFFSET 0.00001
 
 
@@ -254,11 +254,15 @@ vec3 render(in vec2 fragCoord)
 			if (result.hitSurface.refractionCoeff > 0.0 && queuedPasses < RECURSION_MAX_PASSES) {
 				RenderPass refractionPass;
 				refractionPass.blendCoeff = currentPass.blendCoeff * result.hitSurface.refractionCoeff;
-				if (currentPass.invert > 0.0)
+				
+				if (currentPass.invert > 0.0) {
 					refractionPass.rayDir = refract(currentPass.rayDir, result.normal, 1.0 / result.hitSurface.refractionIndex);
-				else
+				} else {
 					refractionPass.rayDir = refract(currentPass.rayDir, -result.normal, result.hitSurface.refractionIndex);
+				}
+				
 				refractionPass.invert = -currentPass.invert;
+				
 				refractionPass.rayOrigin = result.hitPoint + result.normal * RECURSION_NORMAL_OFFSET * refractionPass.invert;
 				
 				passes[queuedPasses] = refractionPass;
