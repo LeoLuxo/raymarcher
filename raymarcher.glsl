@@ -28,7 +28,7 @@
 #define FOG_POWER 0.5
 
 #define RECURSION_MAX_PASSES 16
-#define RECURSION_NORMAL_OFFSET 0.00001
+#define RECURSION_NORMAL_OFFSET 0.0001
 
 
 #iChannel0 "file://skybox/{}.jpg"

@@ -15,7 +15,7 @@ Surface sdfScene(vec3 p, float time)
 	);
 	
 	Surface sphere2a = Surface(
-		sdfSphere(p - vec3(1.6, 2.0, 0.0), 1.5),
+		sdfSphere(p - vec3(3.02, 2.0, 0.0), 3.0),
 		vec3(0.0),
 		0.0, 0.0,
 		0.0,
@@ -23,7 +23,7 @@ Surface sdfScene(vec3 p, float time)
 	);
 	
 	Surface sphere2b = Surface(
-		sdfSphere(p - vec3(-1.6, 2.0, 0.0), 1.5),
+		sdfSphere(p - vec3(-3.02, 2.0, 0.0), 3.0),
 		vec3(0.0),
 		0.0, 0.0,
 		0.0,
@@ -38,10 +38,10 @@ Surface sdfScene(vec3 p, float time)
 	else
 		plane = Surface(sdfFloor(p, 0.0), vec3(0.1), 0.1, 8.0, 0.0, 0.0, 1.0);
 	
-	Surface d = plane;
-	d = blendMin(d, sphere);
+	Surface d = sphere;
 	d = blendDiff(d, sphere2a);
 	d = blendDiff(d, sphere2b);
+	d = blendMin(d, plane);
 	
 	// Surface d = plane;
 	// d = blendMin(octa, d);
