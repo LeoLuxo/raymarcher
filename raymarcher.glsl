@@ -18,7 +18,7 @@
 #define AO_FALLOFF 0.98
 
 #define SUN_DIR normalize(vec3(-0.8, 0.5, -1.0)) // Is inverted, so vector looking TOWARDS the sun
-#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.3
+#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.5
 #define SKY_COLOR vec3(0.4, 0.7, 1.0)
 #define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
 #define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)

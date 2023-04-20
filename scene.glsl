@@ -9,24 +9,24 @@ Surface sdfScene(vec3 p, float time)
 	Surface sphere = Surface(
 		sdfSphere(p - vec3(0.0, 2.0, 0.0), 1.0),
 		vec3(0.0),
-		0.0, 0.0,
-		0.0,
+		0.1, 8.0,
+		0.1,
 		1.0, 1.6
 	);
 	
 	Surface sphere2a = Surface(
-		sdfSphere(p - vec3(3.02, 2.0, 0.0), 3.0),
+		sdfSphere(p - vec3(2.02, 2.0, 0.0), 2.0),
 		vec3(0.0),
-		0.0, 0.0,
-		0.0,
+		0.1, 8.0,
+		0.1,
 		1.0, 1.6
 	);
 	
 	Surface sphere2b = Surface(
-		sdfSphere(p - vec3(-3.02, 2.0, 0.0), 3.0),
+		sdfSphere(p - vec3(-2.02, 2.0, 0.0), 2.0),
 		vec3(0.0),
-		0.0, 0.0,
-		0.0,
+		0.1, 8.0,
+		0.1,
 		1.0, 1.6
 	);
 	
