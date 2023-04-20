@@ -1,8 +1,8 @@
 
 #define EPSILON 0.0001
 #define MIN_MARCH 0.005
-#define MAX_MARCH 50.0
-#define MAX_MARCH_STEPS 2048
+#define MAX_MARCH 20.0
+#define MAX_MARCH_STEPS 512
 
 #define SHADOW_DEF 16.0
 #define SHADOW_EPSILON 0.001

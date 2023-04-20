@@ -2,52 +2,41 @@
 #include "surface.glsl"
 #include "sdf.glsl"
 
+// Precision-adjusted variations of https://www.shadertoy.com/view/4djSRW
+float hash(float p) { p = fract(p * 0.011); p *= p + 7.5; p *= p + p; return fract(p); }
+float hash(vec2 p) {vec3 p3 = fract(vec3(p.xyx) * 0.13); p3 += dot(p3, p3.yzx + 3.333); return fract((p3.x + p3.y) * p3.z); }
 
 
-Surface sdfScene(vec3 p, float time)
-{
-	Surface sphere = Surface(
-		sdfSphere(p - vec3(0.0, 2.0, 0.0), 1.0),
-		vec3(0.0),
-		0.1, 8.0,
-		0.1,
-		1.0, 1.6
-	);
+float noise(vec2 x) {
+    vec2 i = floor(x);
+    vec2 f = fract(x);
+
+	// Four corners in 2D of a tile
+	float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+
+    // Simple 2D lerp using smoothstep envelope between the values.
+	// return vec3(mix(mix(a, b, smoothstep(0.0, 1.0, f.x)),
+	//			mix(c, d, smoothstep(0.0, 1.0, f.x)),
+	//			smoothstep(0.0, 1.0, f.y)));
+
+	// Same code, with the clamps in smoothstep and common subexpressions
+	// optimized away.
+    vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+}
+
+Surface sdfScene(vec3 p, float time) {
 	
-	Surface sphere2a = Surface(
-		sdfSphere(p - vec3(2.02, 2.0, 0.0), 2.0),
-		vec3(0.0),
-		0.1, 8.0,
-		0.1,
-		1.0, 1.6
-	);
+	time *= 0.5;
 	
-	Surface sphere2b = Surface(
-		sdfSphere(p - vec3(-2.02, 2.0, 0.0), 2.0),
-		vec3(0.0),
-		0.1, 8.0,
-		0.1,
-		1.0, 1.6
-	);
+	float layer1 = noise(p.xz*2.0 + vec2(time*2.0, time*3.0)*0.2) * 1.0;
+	float layer2 = noise(p.xz*3.2 + vec2(time*-1.1, time*2.0)*0.3) * 0.5;
+	float layer3 = noise(p.xz*4.0 + vec2(time*4.0, time*2.0)*0.5) * 0.2;
+
+	Surface water = Surface(sdfFloorThick(p, 0.0, 0.1 + 0.2*(layer1+layer2+layer3)), vec3(0.0, 0.03, 0.1), 0.0, 0.0, 0.1, 0.9, 1.6);
 	
-	float ref = sin(time) / 2.0 + 0.5;
-	
-	Surface plane;
-	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.3), 0.1, 8.0, 0.0, 0.0, 1.0);
-	else
-		plane = Surface(sdfFloor(p, 0.0), vec3(0.1), 0.1, 8.0, 0.0, 0.0, 1.0);
-	
-	Surface d = sphere;
-	d = blendDiff(d, sphere2a);
-	d = blendDiff(d, sphere2b);
-	d = blendMin(d, plane);
-	
-	// Surface d = plane;
-	// d = blendMin(octa, d);
-	// d = blendSMax(d, sphere, 1.0);
-	// d = blendSDiff(d, sphere, 1.0);
-	// d = blendSMin(d, sphere, 1.0);
-	return d;
-	// return blendSDiff(sphere, plane, 1.0);
+	return water;
 }

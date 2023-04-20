@@ -11,6 +11,11 @@ float sdfFloor(vec3 p, float height)
 	return p.y - height;
 }
 
+float sdfFloorThick(vec3 p, float height, float thickness)
+{
+	return abs(p.y - height) - thickness;
+}
+
 float sdfSphere(vec3 p, float radius)
 {
 	return length(p) - radius;
