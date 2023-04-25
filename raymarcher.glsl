@@ -159,12 +159,7 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 }
 
 vec3 skyColor(vec3 rayDir) {
-	// skybox
-	vec3 skyColor = texture(iChannel0, rayDir).rgb;
-	// sun
-	skyColor += pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
-	
-	return skyColor;
+	return vec3(1.0);
 }
 
 vec3 calcPassColor(RenderPassResult pass, float time) {
@@ -204,7 +199,7 @@ vec3 render(in vec2 fragCoord)
 	float time = iTime * 1.0;
 	vec2 mouse = iMouse.xy / iResolution.xy;
 	
-	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
+	vec3 target = vec3(0.0, 0.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
 	
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
