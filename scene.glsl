@@ -35,8 +35,16 @@ Surface sdfScene(vec3 p, float time)
 		sdfSphere(p - vec3(sin(time)*-3.0, sin(time)*-3.0+5.0, -1.0), 1.0),
 		vec3(0.0),
 		0.1, 16.0,
-		0.05,
-		0.95, 1.6
+		0.1,
+		0.9, 1.6
+	);
+	
+	Surface bigDiamond = Surface(
+		sdfOctahedron(p - vec3(0.0, 2.0, 0.0), 2.8),
+		vec3(0.0, 0.3, 0.9),
+		0.1, 16.0,
+		wallReflec,
+		0.0, 1.0
 	);
 	
 	Surface d = floorWall;
@@ -48,6 +56,8 @@ Surface sdfScene(vec3 p, float time)
 	
 	d = blendMin(d, sphere1);
 	d = blendMin(d, sphere2);
+	
+	d = blendDiff(d, bigDiamond);
 	
 	return d;
 }
