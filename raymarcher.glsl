@@ -17,15 +17,10 @@
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
 
-#define SUN_DIR normalize(vec3(-0.8, 0.5, -1.0)) // Is inverted, so vector looking TOWARDS the sun
-#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.3
-#define SKY_COLOR vec3(0.4, 0.7, 1.0)
-#define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
-#define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)
+// #define ANIMATED_LIGHT
+#define LIGHT_COLOR vec3(0.8)
+#define AMBIENT_COLOR (vec3(1.0) - LIGHT_COLOR)
 
-#define FOG_DISTANCE SHADOW_MAX_MARCH
-#define FOG_FADE_DISTANCE 5.0
-#define FOG_POWER 0.5
 
 #define RECURSION_MAX_PASSES 16
 #define RECURSION_NORMAL_OFFSET 0.001
@@ -168,38 +163,35 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 vec3 skyColor(vec3 rayDir) {
 	// skybox
 	vec3 skyColor = texture(iChannel0, rayDir).rgb;
-	// sun
-	skyColor += pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
 	
 	return skyColor;
 }
 
-vec3 calcPassColor(RenderPassResult pass, float time) {
+vec3 calcPassColor(RenderPassResult pass, vec3 light, float time) {
 	
 	vec3 passColor = skyColor(pass.rayDir);
 	
 	if (pass.hit)
 	{
-		float shadow = calcShadow(pass.hitPoint + pass.normal*SHADOW_NORMAL_OFFSET, SUN_DIR, 1000.0, time);
+		vec3 lightDir = normalize(light - pass.hitPoint);
+		
+		
+		float shadow = calcShadow(pass.hitPoint + pass.normal*SHADOW_NORMAL_OFFSET, lightDir, distance(light, pass.hitPoint), time);
 		float ao = calcAmbientOcclusion(pass.hitPoint, pass.normal, time);
 		
-		float sunDiffuse = clamp(dot(pass.normal, SUN_DIR), 0.0, 1.0);
-		float skyDiffuse = clamp(0.5 + 0.5*dot(pass.normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
-		float bounceDiffuse = clamp(-0.05 + 0.3*dot(pass.normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
+		float lightDiffuse = clamp(dot(pass.normal, lightDir), 0.0, 1.0);
 		
 		vec3 lighting = vec3(0.0);
 			
-		// Sun diffuse
-		lighting += SUN_COLOR * sunDiffuse * shadow;
-		// Sky ambient diffuse
-		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
-		// Bounce ambient diffuse
-		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+		// light diffuse
+		lighting += LIGHT_COLOR * lightDiffuse * shadow;
+		// ambient
+		lighting += AMBIENT_COLOR * ao;
 		
 		passColor = pass.hitSurface.color * lighting;
 		
-		// Sun specular
-		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * clamp(dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0);
+		// Light specular
+		passColor += LIGHT_COLOR * pass.hitSurface.specularCoeff * clamp(dot(pass.normal, normalize(pass.rayDir+lightDir)), 0.0, 1.0);
 	}
 	
 	return passColor;
@@ -214,8 +206,6 @@ vec3 render(in vec2 fragCoord)
 	vec3 target = vec3(0.0, 5.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 5.0, -10.0);
 	
-	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
-	rayOrigin.xz = target.xz + vec2(5.0*cos(10.0*mouse.x), 5.0*sin(10.0*mouse.x));
 	mat3 viewMat = cameraLookAt(rayOrigin, target);
 	
 	vec2 uv = (fragCoord - iResolution.xy / 2.0)/iResolution.y;
@@ -234,15 +224,17 @@ vec3 render(in vec2 fragCoord)
 		RenderPass currentPass = passes[bounce];
 		RenderPassResult result = calcPass(currentPass, time);
 		
-		vec3 passColor = calcPassColor(result, time);
+		#ifdef ANIMATED_LIGHT
+		vec3 light = vec3(4.0*sin(time), 5.0 + 4.0*cos(time), 3.0*sin(time-1.0));
+		#else
+		vec3 light = vec3(10.0 - 20.0 * mouse.x, -5.0 + 20.0 * mouse.y, 0.0);
+		#endif
+			
 		
-		// Apply fog (which depends on camera distance) to blending coefficient accumulator
-		float fogBlend = 1.0 - pow(clamp((distance(rayOrigin, result.hitPoint) - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER);
+		vec3 passColor = calcPassColor(result, light, time);
 		
 		// Add pass color to final color
-		color += mix(skyColor(currentPass.rayDir), passColor, fogBlend) * currentPass.blendCoeff;
-		
-		currentPass.blendCoeff *= fogBlend;
+		color += passColor * currentPass.blendCoeff;
 		
 		if (result.hit) {
 			// Prepare next reflective & refractive bounces

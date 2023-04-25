@@ -24,7 +24,7 @@ Surface sdfScene(vec3 p, float time)
 	
 	
 	Surface sphere1 = Surface(
-		sdfSphere(p - vec3(3.0, 2.0, 1.0), 2.0),
+		sdfSphere(p - vec3(sin(time)*3.0, 2.0, 1.0), 2.0),
 		vec3(0.0),
 		0.1, 16.0,
 		1.0,
@@ -32,11 +32,11 @@ Surface sdfScene(vec3 p, float time)
 	);
 	
 	Surface sphere2 = Surface(
-		sdfSphere(p - vec3(-3.0, 5.0, -1.0), 1.0),
+		sdfSphere(p - vec3(sin(time)*-3.0, sin(time)*-3.0+5.0, -1.0), 1.0),
 		vec3(0.0),
 		0.1, 16.0,
-		0.1,
-		0.9, 1.6
+		0.05,
+		0.95, 1.6
 	);
 	
 	Surface d = floorWall;
