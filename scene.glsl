@@ -6,7 +6,7 @@
 
 Surface sdfScene(vec3 p, float time)
 {
-	float wallReflec = 0.2;
+	float wallReflec = 0.0;
 	
 	Surface ceilingHole = Surface(sdfBox(p - vec3(0.0, 10.0, 0.0), vec3(2.0, 2.0, 2.0)), vec3(1.0), 0.0, 0.0, 1.0, 0.0, 1.0);
 	Surface ceilingWall = Surface(sdfBox(p - vec3(0.0, 11.0, 0.0), vec3(12.0, 2.0, 12.0)), vec3(0.9), 0.1, 16.0, wallReflec, 0.0, 1.0);
@@ -23,29 +23,30 @@ Surface sdfScene(vec3 p, float time)
 	
 	
 	
-	Surface sphere1 = Surface(
-		sdfSphere(p - vec3(sin(time)*3.0, 2.0, 1.0), 2.0),
-		vec3(0.0),
-		0.1, 16.0,
-		1.0,
-		0.0, 1.0
-	);
+	// Surface sphere1 = Surface(
+	// 	sdfSphere(p - vec3(sin(time)*3.0, 2.0, 1.0), 2.0),
+	// 	vec3(0.0),
+	// 	0.1, 16.0,
+	// 	1.0,
+	// 	0.0, 1.0
+	// );
 	
 	Surface sphere2 = Surface(
-		sdfSphere(p - vec3(sin(time)*-3.0, sin(time)*-3.0+5.0, -1.0), 1.0),
+		abs(sdfSphere(p - vec3(sin(time)*-3.0, sin(time)*-3.0+5.0, -1.0), 2.0) + 0.01) - 0.01,
+		// sdfSphere(p - vec3(sin(time)*-3.0, sin(time)*-3.0+5.0, -1.0), 2.0),
 		vec3(0.0),
 		0.1, 16.0,
 		0.1,
 		0.9, 1.6
 	);
 	
-	Surface bigDiamond = Surface(
-		sdfOctahedron(p - vec3(0.0, 2.0, 0.0), 2.8),
-		vec3(0.0, 0.3, 0.9),
-		0.1, 16.0,
-		wallReflec,
-		0.0, 1.0
-	);
+	// Surface bigDiamond = Surface(
+	// 	sdfOctahedron(p - vec3(0.0, 2.0, 0.0), 2.8),
+	// 	vec3(0.0, 0.3, 0.9),
+	// 	0.1, 16.0,
+	// 	wallReflec,
+	// 	0.0, 1.0
+	// );
 	
 	Surface d = floorWall;
 	d = blendMin(d, ceilingWall);
@@ -54,10 +55,10 @@ Surface sdfScene(vec3 p, float time)
 	d = blendMin(d, rightWall);
 	d = blendMin(d, leftWall);
 	
-	d = blendMin(d, sphere1);
+	// d = blendMin(d, sphere1);
 	d = blendMin(d, sphere2);
 	
-	d = blendDiff(d, bigDiamond);
+	// d = blendDiff(d, bigDiamond);
 	
 	return d;
 }
