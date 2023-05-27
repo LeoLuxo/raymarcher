@@ -187,7 +187,11 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		passColor = pass.hitSurface.color * lighting;
 		
 		// Sun specular
-		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * clamp(dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0);
+		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * pow(clamp(-dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
+		
+		// float spe = pow( clamp( dot( pass.normal, rayDir+SUN_DIR ), 0.0, 1.0 ),16.0);
+		// spe *= dif;
+		// spe *= 0.04+0.96*pow(clamp(1.0-dot(hal,lig),0.0,1.0),5.0);
 	}
 	
 	return passColor;
@@ -197,8 +201,8 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 vec3 render(in vec2 fragCoord)
 {
 	float time = iTime * 1.0;
-	// vec2 mouse = iMouse.xy / iResolution.xy;
-	vec2 mouse = vec2(1.173, 1.0);
+	vec2 mouse = iMouse.xy / iResolution.xy;
+	// vec2 mouse = vec2(1.173, 1.0);
 	
 	vec3 target = vec3(0.0, 0.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
