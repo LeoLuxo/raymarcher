@@ -22,5 +22,5 @@ Surface sdfScene(vec3 p, float time)
 		0.0, 1.0
 	);
 	
-	return blendDiff(box, sphere);
+	return blendDiff(sphere, box);
 }

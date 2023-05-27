@@ -197,7 +197,8 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 vec3 render(in vec2 fragCoord)
 {
 	float time = iTime * 1.0;
-	vec2 mouse = iMouse.xy / iResolution.xy;
+	// vec2 mouse = iMouse.xy / iResolution.xy;
+	vec2 mouse = vec2(1.173, 1.0);
 	
 	vec3 target = vec3(0.0, 0.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
