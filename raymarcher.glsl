@@ -187,7 +187,7 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		passColor = pass.hitSurface.color * lighting;
 		
 		// Sun specular
-		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * pow(clamp(-dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
+		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * pow(clamp(-dot(pass.normal, normalize(pass.rayDir-SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
 		
 		// float spe = pow( clamp( dot( pass.normal, rayDir+SUN_DIR ), 0.0, 1.0 ),16.0);
 		// spe *= dif;
