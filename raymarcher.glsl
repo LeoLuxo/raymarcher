@@ -12,7 +12,7 @@
 #define SHADOW_MARCH_BIAS 0.5
 #define SHADOW_NORMAL_OFFSET 0.0001
 
-#define AO_STEPS 0
+#define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
 #define AO_MIN_STEP 0.01
 #define AO_FALLOFF 0.98
@@ -159,7 +159,7 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 }
 
 vec3 skyColor(vec3 rayDir) {
-	return vec3(1.0);
+	return vec3(0.0);
 }
 
 vec3 calcPassColor(RenderPassResult pass, float time) {
@@ -175,19 +175,27 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		float skyDiffuse = clamp(0.5 + 0.5*dot(pass.normal, vec3(0.0,1.0,0.0)), 0.0, 1.0);
 		float bounceDiffuse = clamp(-0.05 + 0.3*dot(pass.normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
 		
-		vec3 lighting = vec3(0.0);
+		// vec3 lighting = pass.hitSurface.color * 0.1 * ao;
+		// vec3 lighting = vec3(0.0);
 			
 		// Sun diffuse
-		lighting += SUN_COLOR * sunDiffuse * shadow;
+		// lighting += SUN_COLOR * sunDiffuse;
+		// lighting += sunDiffuse * shadow;
 		// Sky ambient diffuse
-		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
+		// lighting += SKY_FILL_COLOR * skyDiffuse * ao;
 		// Bounce ambient diffuse
-		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+		// lighting += BOUNCE_COLOR * bounceDiffuse * ao;
 		
-		passColor = pass.hitSurface.color * lighting;
+		// passColor = pass.hitSurface.color * lighting;
+		
+		// ambient
+		passColor += pass.hitSurface.color * 0.1;
+		
+		// diffuse
+		passColor += (pass.hitSurface.color-passColor) * sunDiffuse;
 		
 		// Sun specular
-		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * pow(clamp(-dot(pass.normal, normalize(pass.rayDir-SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
+		passColor += pass.hitSurface.specularCoeff * pow(clamp(dot(pass.normal, normalize(-pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
 		
 		// float spe = pow( clamp( dot( pass.normal, rayDir+SUN_DIR ), 0.0, 1.0 ),16.0);
 		// spe *= dif;
@@ -201,11 +209,11 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 vec3 render(in vec2 fragCoord)
 {
 	float time = iTime * 1.0;
-	vec2 mouse = iMouse.xy / iResolution.xy;
-	// vec2 mouse = vec2(1.173, 1.0);
+	// vec2 mouse = iMouse.xy / iResolution.xy;
+	vec2 mouse = vec2(1.173, 1.0);
 	
-	vec3 target = vec3(0.0, 0.0, 0.0);
-	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
+	vec3 target = vec3(0.0, 1.0, 0.0);
+	vec3 rayOrigin = vec3(0.0, 1.0, 0.0);
 	
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
 	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
