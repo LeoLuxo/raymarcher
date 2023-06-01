@@ -66,23 +66,23 @@ Surface blendSurf(Surface a, Surface b, float blend)
 Surface blendSMin(Surface a, Surface b, float k)
 {
 	vec2 blend = smin(a.dist, b.dist, k);
-	a.dist = blend.x;
 	a = blendSurf(a, b, blend.y);
+	a.dist = blend.x;
 	return a;
 }
 
 Surface blendSMax(Surface a, Surface b, float k)
 {
 	vec2 blend = smax(a.dist, b.dist, k);
-	a.dist = blend.x;
 	a = blendSurf(a, b, blend.y);
+	a.dist = blend.x;
 	return a;
 }
 
 Surface blendSDiff(Surface a, Surface b, float k)
 {
 	vec2 blend = smax(a.dist, -b.dist, k);
-	a.dist = blend.x;
 	a = blendSurf(a, b, blend.y);
+	a.dist = blend.x;
 	return a;
 }

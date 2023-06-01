@@ -29,11 +29,15 @@ Surface sdfScene(vec3 p, float time)
 		sdfSphere(p - vec3(0.0, 1.0, 0.0), 1.0),
 		vec3(1.0, 0.01, 0.0),
 		0.1, 64.0,
-		0.0,
+		0.5,
 		0.0, 1.0
 	);
 	
-	Surface plane = Surface(sdfFloor(p, 0.0), vec3(0.7, 0.7, 0.7), 0.1, 8.0, 0.0, 0.0, 1.0);
+	Surface plane;
+	if (fract(p.x*0.5) < 0.5 != fract(p.z*0.5) < 0.5)
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.7), 0.1, 8.0, 0.5, 0.0, 0.0);
+	else
+		plane = Surface(sdfFloor(p, 0.0), vec3(0.5), 0.1, 8.0, 0.5, 0.0, 0.0);
 	
 	// return sphere;
 	Surface d = plane;

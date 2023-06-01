@@ -1,15 +1,15 @@
 
 #define EPSILON 0.0001
-#define MIN_MARCH 0.005
+#define MIN_MARCH 0.001
 #define MAX_MARCH 50.0
 #define MAX_MARCH_STEPS 2048
 
-#define SHADOW_DEF 16.0
+#define SHADOW_DEF 4.0
 #define SHADOW_EPSILON 0.001
-#define SHADOW_MIN_MARCH 0.01
+#define SHADOW_MIN_MARCH 0.05
 #define SHADOW_MAX_MARCH MAX_MARCH
 #define SHADOW_MAX_MARCH_STEPS MAX_MARCH_STEPS
-#define SHADOW_MARCH_BIAS 0.5
+#define SHADOW_MARCH_BIAS 1.0
 #define SHADOW_NORMAL_OFFSET 0.0001
 
 #define AO_STEPS 5
@@ -189,10 +189,10 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		// passColor = pass.hitSurface.color * lighting;
 		
 		// ambient
-		passColor += pass.hitSurface.color * 0.1;
+		passColor += pass.hitSurface.color * 0.1 * ao;
 		
 		// diffuse
-		passColor += (pass.hitSurface.color-passColor) * sunDiffuse;
+		passColor += (pass.hitSurface.color-passColor) * sunDiffuse * shadow;
 		
 		// Sun specular
 		passColor += pass.hitSurface.specularCoeff * pow(clamp(dot(pass.normal, normalize(-pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
