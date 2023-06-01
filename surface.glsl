@@ -60,6 +60,7 @@ Surface blendSurf(Surface a, Surface b, float blend)
 	a.specularPow = mix(a.specularPow, b.specularPow, blend);
 	a.reflectionCoeff = mix(a.reflectionCoeff, b.reflectionCoeff, blend);
 	a.refractionCoeff = mix(a.refractionCoeff, b.refractionCoeff, blend);
+	a.refractionIndex = mix(a.refractionIndex, b.refractionIndex, blend);
 	return a;
 }
 
