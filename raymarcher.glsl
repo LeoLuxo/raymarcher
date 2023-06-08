@@ -9,8 +9,8 @@
 #define SHADOW_MIN_MARCH 0.01
 #define SHADOW_MAX_MARCH 50.0
 #define SHADOW_MAX_MARCH_STEPS 256
-#define SHADOW_MARCH_BIAS 0.5
-#define SHADOW_NORMAL_OFFSET 0.0001
+#define SHADOW_MARCH_BIAS 1.0
+#define SHADOW_NORMAL_OFFSET 0.001
 
 #define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
@@ -27,7 +27,7 @@
 #define FOG_FADE_DISTANCE 5.0
 #define FOG_POWER 0.5
 
-#define RECURSION_MAX_PASSES 8
+#define RECURSION_MAX_PASSES 16
 #define RECURSION_NORMAL_OFFSET 0.00001
 
 
@@ -160,9 +160,12 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 
 vec3 skyColor(vec3 rayDir) {
 	// skybox
-	vec3 skyColor = texture(iChannel0, rayDir).rgb;
+	// vec3 skyColor = texture(iChannel0, rayDir).rgb;
+	vec3 skyColor = vec3(0.4, 0.7, 1.0) - 0.6*max(rayDir.y, 0.0);
 	// sun
 	skyColor += pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+	
+	
 	
 	return skyColor;
 }
@@ -192,7 +195,7 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		passColor = pass.hitSurface.color * lighting;
 		
 		// Sun specular
-		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * clamp(dot(pass.normal, normalize(pass.rayDir+SUN_DIR)), 0.0, 1.0);
+		passColor += SUN_COLOR * pass.hitSurface.specularCoeff * pow(clamp(dot(pass.normal, normalize(-pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow);
 	}
 	
 	return passColor;
@@ -201,18 +204,20 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 
 vec3 render(in vec2 fragCoord)
 {
-	float time = iTime * 1.0;
-	vec2 mouse = iMouse.xy / iResolution.xy;
+	float time = iTime * 0.2;
+	// vec2 mouse = iMouse.xy / iResolution.xy;
+	vec2 mouse = vec2(time * 0.05, 0.5);
 	
 	vec3 target = vec3(0.0, 8.0*mouse.y - 2.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 2.0, 0.0);
 	
+	float camdist = 5.5;
 	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
-	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
+	rayOrigin.xz = target.xz + vec2(camdist*cos(10.0*mouse.x), camdist*sin(10.0*mouse.x));
 	mat3 viewMat = cameraLookAt(rayOrigin, target);
 	
 	vec2 uv = (fragCoord - iResolution.xy / 2.0)/iResolution.y;
-	float focalLength = 1.0 / 2.0 / 0.5; // tan(45° / 2) = 0.5
+	float focalLength = 1.0 / 2.0 / 0.7; // tan(45° / 2) = 0.5
 	
 	vec3 rayDir = viewMat * normalize(vec3(uv, focalLength));
 	
@@ -233,6 +238,7 @@ vec3 render(in vec2 fragCoord)
 		float fogBlend = 1.0 - pow(clamp((distance(rayOrigin, result.hitPoint) - FOG_DISTANCE + FOG_FADE_DISTANCE)/(FOG_DISTANCE - FOG_FADE_DISTANCE), 0.0, 1.0), FOG_POWER);
 		
 		// Add pass color to final color
+		// if (bounce==4)
 		color += mix(skyColor(currentPass.rayDir), passColor, fogBlend) * currentPass.blendCoeff;
 		
 		currentPass.blendCoeff *= fogBlend;
