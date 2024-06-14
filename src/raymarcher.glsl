@@ -202,16 +202,14 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 
 vec3 render(in vec2 fragCoord)
 {
-	float time = iTime * 1.0;
-	vec2 mouse = iMouse.xy / iResolution.xy;
-	// vec2 mouse = vec2(1.173, 1.0);
+	float time = iTime;
+	vec2 mouse;
+	vec3 rayOrigin;
+	vec3 rayTarget;
 	
-	vec3 target = vec3(0.0, 1.0, 0.0);
-	vec3 rayOrigin = vec3(0.0, 1.0, 0.0);
+	controls(time, mouse, rayOrigin, rayTarget);
 	
-	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
-	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
-	mat3 viewMat = cameraLookAt(rayOrigin, target);
+	mat3 viewMat = cameraLookAt(rayOrigin, rayTarget);
 	
 	vec2 uv = (fragCoord - iResolution.xy / 2.0)/iResolution.y;
 	float focalLength = 1.0 / 2.0 / 0.5; // tan(45° / 2) = 0.5

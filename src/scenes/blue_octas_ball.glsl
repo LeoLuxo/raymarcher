@@ -1,6 +1,17 @@
 #include "../surface.glsl"
 #include "../sdf.glsl"
 
+void controls(inout float time, out vec2 mouse, out vec3 rayTarget, out vec3 rayOrigin)
+{
+	mouse = iMouse.xy / iResolution.xy;
+	// vec2 mouse = vec2(1.173, 1.0);
+	
+	target = vec3(0.0, 1.0, 0.0);
+	rayOrigin = vec3(0.0, 1.0, 0.0);
+	
+	// camera.xz = target.xz + vec2(4.5*cos(0.5*time + mouse.x), 4.5*sin(0.5*time + mouse.x));
+	rayOrigin.xz = target.xz + vec2(4.5*cos(10.0*mouse.x), 4.5*sin(10.0*mouse.x));
+}
 
 Surface sdfScene(vec3 p, float time)
 {
