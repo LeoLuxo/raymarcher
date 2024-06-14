@@ -1,15 +1,15 @@
 
 #define EPSILON 0.0001
-#define MIN_MARCH 0.001
-#define MAX_MARCH 50.0
-#define MAX_MARCH_STEPS 2048
+#define MIN_MARCH 0.05
+#define MAX_MARCH 150.0
+#define MAX_MARCH_STEPS 1024
 
-#define SHADOW_DEF 4.0
+#define SHADOW_DEF 16.0
 #define SHADOW_EPSILON 0.001
-#define SHADOW_MIN_MARCH 0.05
-#define SHADOW_MAX_MARCH MAX_MARCH
-#define SHADOW_MAX_MARCH_STEPS MAX_MARCH_STEPS
-#define SHADOW_MARCH_BIAS 1.0
+#define SHADOW_MIN_MARCH 0.01
+#define SHADOW_MAX_MARCH 50.0
+#define SHADOW_MAX_MARCH_STEPS 256
+#define SHADOW_MARCH_BIAS 0.5
 #define SHADOW_NORMAL_OFFSET 0.0001
 
 #define AO_STEPS 5
@@ -18,17 +18,17 @@
 #define AO_FALLOFF 0.98
 
 #define SUN_DIR normalize(vec3(-0.8, 0.5, -1.0)) // Is inverted, so vector looking TOWARDS the sun
-#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.5
+#define SUN_COLOR vec3(8.1, 6.0, 4.2)*0.3
 #define SKY_COLOR vec3(0.4, 0.7, 1.0)
 #define SKY_FILL_COLOR vec3(0.5, 0.7, 1.0)
 #define BOUNCE_COLOR vec3(0.5, 0.5, 0.5)
 
-#define FOG_DISTANCE MAX_MARCH
+#define FOG_DISTANCE SHADOW_MAX_MARCH
 #define FOG_FADE_DISTANCE 5.0
 #define FOG_POWER 0.5
 
-#define RECURSION_MAX_PASSES 16
-#define RECURSION_NORMAL_OFFSET 0.0001
+#define RECURSION_MAX_PASSES 8
+#define RECURSION_NORMAL_OFFSET 0.00001
 
 
 #iChannel0 "file://skybox/{}.jpg"
@@ -159,7 +159,12 @@ RenderPassResult calcPass(RenderPass pass, float time) {
 }
 
 vec3 skyColor(vec3 rayDir) {
-	return vec3(0.0);
+	// skybox
+	vec3 skyColor = texture(iChannel0, rayDir).rgb;
+	// sun
+	skyColor += pow(max(dot(SUN_DIR, rayDir)-0.9, 0.0)/0.1, 40.0) * SUN_COLOR;
+	
+	return skyColor;
 }
 
 vec3 calcPassColor(RenderPassResult pass, float time) {
@@ -176,30 +181,19 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 		float bounceDiffuse = clamp(-0.05 + 0.3*dot(pass.normal, vec3(0.0,-1.0,0.0)), 0.0, 1.0);
 		
 		// vec3 lighting = pass.hitSurface.color * 0.1 * ao;
-		// vec3 lighting = vec3(0.0);
+		vec3 lighting = vec3(0.0);
 			
 		// Sun diffuse
-		// lighting += SUN_COLOR * sunDiffuse;
-		// lighting += sunDiffuse * shadow;
+		lighting += SUN_COLOR * sunDiffuse * shadow;
 		// Sky ambient diffuse
-		// lighting += SKY_FILL_COLOR * skyDiffuse * ao;
+		lighting += SKY_FILL_COLOR * skyDiffuse * ao;
 		// Bounce ambient diffuse
-		// lighting += BOUNCE_COLOR * bounceDiffuse * ao;
+		lighting += BOUNCE_COLOR * bounceDiffuse * ao;
 		
-		// passColor = pass.hitSurface.color * lighting;
-		
-		// ambient
-		passColor += pass.hitSurface.color * 0.1 * ao;
-		
-		// diffuse
-		passColor += (pass.hitSurface.color-passColor) * sunDiffuse * shadow;
+		passColor = pass.hitSurface.color * lighting;
 		
 		// Sun specular
 		passColor += pass.hitSurface.specularCoeff * pow(clamp(dot(pass.normal, normalize(-pass.rayDir+SUN_DIR)), 0.0, 1.0), pass.hitSurface.specularPow) * sunDiffuse;
-		
-		// float spe = pow( clamp( dot( pass.normal, rayDir+SUN_DIR ), 0.0, 1.0 ),16.0);
-		// spe *= dif;
-		// spe *= 0.04+0.96*pow(clamp(1.0-dot(hal,lig),0.0,1.0),5.0);
 	}
 	
 	return passColor;
@@ -209,8 +203,8 @@ vec3 calcPassColor(RenderPassResult pass, float time) {
 vec3 render(in vec2 fragCoord)
 {
 	float time = iTime * 1.0;
-	// vec2 mouse = iMouse.xy / iResolution.xy;
-	vec2 mouse = vec2(1.173, 1.0);
+	vec2 mouse = iMouse.xy / iResolution.xy;
+	// vec2 mouse = vec2(1.173, 1.0);
 	
 	vec3 target = vec3(0.0, 1.0, 0.0);
 	vec3 rayOrigin = vec3(0.0, 1.0, 0.0);
