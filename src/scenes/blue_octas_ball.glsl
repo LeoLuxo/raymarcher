@@ -1,7 +1,5 @@
-
-#include "surface.glsl"
-#include "sdf.glsl"
-
+#include "../surface.glsl"
+#include "../sdf.glsl"
 
 
 Surface sdfScene(vec3 p, float time)

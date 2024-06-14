@@ -9,8 +9,8 @@
 #define SHADOW_MIN_MARCH 0.01
 #define SHADOW_MAX_MARCH 50.0
 #define SHADOW_MAX_MARCH_STEPS 256
-#define SHADOW_MARCH_BIAS 0.5
-#define SHADOW_NORMAL_OFFSET 0.0001
+#define SHADOW_MARCH_BIAS 1.0
+#define SHADOW_NORMAL_OFFSET 0.001
 
 #define AO_STEPS 5
 #define AO_STEP_SIZE 0.20
@@ -27,7 +27,7 @@
 #define FOG_FADE_DISTANCE 5.0
 #define FOG_POWER 0.5
 
-#define RECURSION_MAX_PASSES 8
+#define RECURSION_MAX_PASSES 16
 #define RECURSION_NORMAL_OFFSET 0.00001
 
 
@@ -35,7 +35,7 @@
 #iChannel0::Type "CubeMap"
 
 
-#include "scene.glsl"
+#include "scenes/octas_orange_ball.glsl"
 
 
 struct RenderPass {
