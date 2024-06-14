@@ -11,6 +11,12 @@ float sdfFloor(vec3 p, float height)
 	return p.y - height;
 }
 
+float sdfBox(vec3 p, vec3 bounds)
+{
+  vec3 q = abs(p) - bounds/2.0;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
 float sdfSphere(vec3 p, float radius)
 {
 	return length(p) - radius;
